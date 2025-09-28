@@ -1,5 +1,6 @@
 import express from "express";
 import Skill from "../models/Skill.js";
+import { verifyToken, verifyAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -18,7 +19,8 @@ router.get("/", async (req, res) => {
 
 
 // POST a new skill
-router.post("/", async (req, res) => {
+// Protect POST route so only logged-in admins can add skills
+router.post("/", verifyToken, verifyAdmin, async (req, res) => {
   const { title, category, videoUrl, description, level } = req.body;
   try {
     const newSkill = new Skill({ title, category, videoUrl, description, level });
@@ -28,6 +30,7 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
 
 export default router;
 
@@ -49,14 +52,13 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// UPDATE a skill
-router.put("/:id", async (req, res) => {
+// UPDATE a skill (only admin)
+router.put("/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
-    // Find skill by ID and update it with data from req.body
     const updatedSkill = await Skill.findByIdAndUpdate(
-      req.params.id,        // which document to update
-      req.body,             // new data (e.g. { title: "New title" })
-      { new: true, runValidators: true } // options
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
     );
 
     if (!updatedSkill) {
@@ -64,15 +66,15 @@ router.put("/:id", async (req, res) => {
     }
 
     console.log("Skill updated:", updatedSkill);
-    res.json(updatedSkill); // send back the updated document
+    res.json(updatedSkill);
   } catch (err) {
     console.error("Error updating skill:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// DELETE a skill by ID
-router.delete("/:id", async (req, res) => {
+// DELETE a skill (only admin)
+router.delete("/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const deletedSkill = await Skill.findByIdAndDelete(req.params.id);
 
@@ -86,4 +88,3 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
