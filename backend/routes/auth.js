@@ -1,0 +1,56 @@
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+
+const router = express.Router();
+
+// POST /api/auth/register
+router.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  try {
+    // 1️⃣ Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // 2️⃣ Hash password
+    const salt = await bcrypt.genSalt(10); // generate random salt
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 3️⃣ Create new user
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    // 4️⃣ Create JWT token
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // 5️⃣ Send response
+    res.status(201).json({
+      message: "User registered successfully",
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
